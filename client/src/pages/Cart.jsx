@@ -1,8 +1,16 @@
 import { Add, Remove } from "@mui/icons-material"
+import { useSelector } from "react-redux"
 import styled from "styled-components"
 import Announcement from "../components/Announcement"
 import Footer from "../components/Footer"
 import Navbar from "../components/Navbar"
+import StripeCheckout from 'react-stripe-checkout'
+import { useEffect, useState } from "react"
+import axios from "axios"
+import { useHistory } from "react-router-dom"
+
+
+const KEY="pk_test_51KTtbLC2NhwnuTjeksB1jw76WLjALHaxU9vSumyGEObJK8rUgfdlJf3TgEAqoTX8LKjuIDkqhDM9pA287VQd81Nh00l46H7J8F"
 
 
 const Container=styled.div``
@@ -129,6 +137,35 @@ font-weight: 600;
 `
 
 const Cart = () => {
+ 
+
+    const cart=useSelector(state=>state.cart)
+
+    const [stripeToken, setStripeToken] = useState(null)
+
+    const history=useHistory()
+
+    const onToken=(token)=>{
+        setStripeToken(token)
+    }
+
+    useEffect(() => {
+        const makeRequest=async()=>{
+            try {
+                const res= await axios.post("http://localhost:5000/api/checkout/payment",{
+                    tokenId:stripeToken.id,
+                    amount:cart.total*100
+                })
+                history.push("/success",{data:res.data,products:cart})
+            } catch (error) {
+                console.log(error)
+            }
+        };
+        stripeToken && cart.total>=1 && makeRequest()
+    }, [stripeToken,cart,history])
+
+    console.log(stripeToken)
+
     return (
         <Container>
             <Navbar/>
@@ -145,51 +182,35 @@ const Cart = () => {
                 </Top>
                 <Bottom>
                     <Info>
-                        <Product>
+                        {cart.products.map((product)=>(
+                            <Product>
                             <ProductDetail>
-                                <Image src="https://th.bing.com/th/id/OIP.2fIFPAKi4zg18dWJ89lhuQHaHa?pid=ImgDet&rs=1"/>
+                                <Image src={product.img}/>
                                 <Details>
-                                    <ProductName><b>Product :</b> JESSIE THUNDER SHOES </ProductName>
-                                    <ProductId><b>Id :</b> 55483348812S </ProductId>
-                                    <ProductColor color="black" />
-                                    <ProductSize><b>Size :</b> 37.5 </ProductSize>
+                                    <ProductName><b>Product :</b> {product.title} </ProductName>
+                                    <ProductId><b>Id :</b> {product._id} </ProductId>
+                                    <ProductColor color={product.color} />
+                                    <ProductSize><b>Size :</b> {product.size} </ProductSize>
                                 </Details>
                             </ProductDetail>
                             <PriceDetail>
                                 <ProductAmountContainer>
                                     <Add/>
-                                    <ProductAmount>2</ProductAmount>
+                                    <ProductAmount>{product.quantity} </ProductAmount>
                                     <Remove/>
                                 </ProductAmountContainer>
-                                <ProductPrice>$30</ProductPrice>
+                                <ProductPrice>$ {product.price*product.quantity}</ProductPrice>
                             </PriceDetail>
                         </Product>
-                        <Hr/>
-                        <Product>
-                            <ProductDetail>
-                                <Image src="https://th.bing.com/th/id/OIP.ov1L5A3MmgYWU4WPUADXuAAAAA?pid=ImgDet&rs=1"/>
-                                <Details>
-                                    <ProductName><b>Product :</b> HAKURA T-SHIRT </ProductName>
-                                    <ProductId><b>Id :</b> 554833489874 </ProductId>
-                                    <ProductColor color="gray" />
-                                    <ProductSize><b>Size :</b> M </ProductSize>
-                                </Details>
-                            </ProductDetail>
-                            <PriceDetail>
-                                <ProductAmountContainer>
-                                    <Add/>
-                                    <ProductAmount>2</ProductAmount>
-                                    <Remove/>
-                                </ProductAmountContainer>
-                                <ProductPrice>$30</ProductPrice>
-                            </PriceDetail>
-                        </Product>
+                        ))
+                }
+                <Hr/>
                     </Info>
                     <Summary>
                         <SummaryTitle>ORDER SUMMARY</SummaryTitle>
                         <SummaryItem>
                             <SummaryItemText>Subtotal</SummaryItemText>
-                            <SummaryItemPrice>$80</SummaryItemPrice>
+                            <SummaryItemPrice>$ {cart.total}</SummaryItemPrice>
                         </SummaryItem>
                         <SummaryItem>
                             <SummaryItemText>Shipping Discount</SummaryItemText>
@@ -197,9 +218,22 @@ const Cart = () => {
                         </SummaryItem>
                         <SummaryItem type="Total">
                             <SummaryItemText >Total</SummaryItemText>
-                            <SummaryItemPrice>$80</SummaryItemPrice>
+                            <SummaryItemPrice>$ {cart.total}</SummaryItemPrice>
                         </SummaryItem>
-                        <Button>CHECKOUT NOW</Button>
+                        <StripeCheckout
+        name='Nawara Fashion'
+        image='https://cdn.dribbble.com/users/1765572/screenshots/5850365/untitled-1.jpg'
+        billingAddress
+        shippingAddress
+        description={`Your total is $${cart.total}`}
+        amount={cart.total*100}
+        token={onToken}
+        stripeKey={KEY}
+        >
+            <Button>
+                Pay Now
+            </Button>
+        </StripeCheckout>
                     </Summary>
                 </Bottom>
             </Wrapper>
